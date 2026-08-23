@@ -66,16 +66,20 @@ let round=[],pos=0,point=0,left=60,tick,locked=false;const $=x=>document.getElem
     if(step%4===0)note(hz(melody[(step+4)%melody.length]-12),.28,.05,'sine',.08);
     step++;
   };
-  const startBgm=()=>{
-    setup();ctx.resume();if(!bgmOn)return;if(loopId)return;
+  const startBgm=async()=>{
+    setup();
+    // iPhone Safari では、操作イベント中に resume を呼び、完了後に
+    // オシレーターを開始する必要がある。
+    try{if(ctx.state!=="running")await ctx.resume()}catch(e){console.warn('BGM の再生を開始できませんでした',e);return}
+    if(ctx.state!=="running"||!bgmOn||loopId)return;
     playStep();loopId=setInterval(playStep,210);
   };
   const stopBgm=()=>{if(loopId){clearInterval(loopId);loopId=null}};
   const correct=()=>{setup();ctx.resume();note(1046,.12,0,'sine',.48);note(1318,.3,.12,'sine',.45)};
   const wrong=()=>{setup();ctx.resume();note(145,.18,0,'sawtooth',.42);note(118,.28,.18,'sawtooth',.38)};
-  soundBtn.onclick=()=>{setup();bgmOn=!bgmOn;soundBtn.textContent=bgmOn?'🔊':'🔇';soundBtn.classList.toggle('muted',!bgmOn);if(bgmOn)startBgm();else stopBgm()};
-  document.getElementById('start').addEventListener('click',startBgm,true);
-  document.getElementById('retry').addEventListener('click',startBgm,true);
+  soundBtn.onpointerdown=()=>{setup();bgmOn=!bgmOn;soundBtn.textContent=bgmOn?'🔊':'🔇';soundBtn.classList.toggle('muted',!bgmOn);if(bgmOn)void startBgm();else stopBgm()};
+  document.getElementById('start').addEventListener('pointerdown',()=>void startBgm(),true);
+  document.getElementById('retry').addEventListener('pointerdown',()=>void startBgm(),true);
   document.addEventListener('click',e=>{const b=e.target.closest('.answer');if(!b)return;if(b.classList.contains('correct'))correct();else if(b.classList.contains('wrong'))wrong()},true);
   new MutationObserver(()=>{if(!document.getElementById('end').classList.contains('hide'))stopBgm()}).observe(document.getElementById('end'),{attributes:true,attributeFilter:['class']});
 })();

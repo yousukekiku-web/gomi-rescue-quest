@@ -588,10 +588,18 @@ function runBGM3(){
     bgm3Step = (bgm3Step + 1) % 32;
   }
 }
-function startBGM3(){
+async function startBGM3(){
   initBGM3();
   if(!bgm3Ctx) return;
-  if(bgm3Ctx.state === 'suspended') bgm3Ctx.resume();
+  // iPhone Safari はユーザー操作内で AudioContext を明示的に再開し、
+  // その完了後に音を予約しないと無音のままになることがある。
+  try{
+    if(bgm3Ctx.state !== 'running') await bgm3Ctx.resume();
+  }catch(e){
+    console.warn('BGM の再生を開始できませんでした', e);
+    return;
+  }
+  if(bgm3Ctx.state !== 'running') return;
   if(bgm3Playing) return;
   bgm3Playing = true; bgm3Step = 0; bgm3NextTime = bgm3Ctx.currentTime + 0.1;
   bgm3Timer = setInterval(runBGM3, 25);
@@ -602,9 +610,12 @@ function toggleBGM3(){
   const btn = document.getElementById('bgm-toggle');
   btn.textContent = bgm3Muted ? '🔇' : '🔊';
   btn.classList.toggle('muted', bgm3Muted);
-  if(!bgm3Muted) startBGM3();
+  if(!bgm3Muted) void startBGM3();
 }
-document.getElementById('bgm-toggle').addEventListener('click', toggleBGM3);
+document.getElementById('bgm-toggle').addEventListener('pointerdown', toggleBGM3);
+// click より先に音声を解放しておく（iPhone Safari のユーザー操作判定対策）。
+document.getElementById('btn-start').addEventListener('pointerdown', ()=>void startBGM3(), true);
+document.getElementById('btn-retry').addEventListener('pointerdown', ()=>void startBGM3(), true);
 
 // ════════════════════════════════════════════════
 // SFX（ステージ1と同じ、Web Audio APIでその場合成。外部ファイル不要）
