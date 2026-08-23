@@ -54,6 +54,10 @@ video{width:100%;height:100%;object-fit:cover;display:block;background:#000;}
   border:none;border-radius:40px;padding:15px 38px;font-family:'Fredoka One',sans-serif;
   font-size:16px;cursor:pointer;box-shadow:0 5px 0 #1f9c53;}
 .sg-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #1f9c53;}
+.sg-skip{margin-top:14px;background:transparent;color:#dff7ea;border:none;
+  font-family:'BIZ UDPGothic','Noto Sans JP',sans-serif;font-size:12.5px;font-weight:700;
+  text-decoration:underline;opacity:.8;cursor:pointer;padding:6px 10px;}
+.sg-skip:active{opacity:.5;}
 
 /* progress bar along the bottom */
 .progress-wrap{position:absolute;left:14px;right:14px;bottom:max(env(safe-area-inset-bottom),16px);
@@ -79,6 +83,7 @@ video{width:100%;height:100%;object-fit:cover;display:block;background:#000;}
     <div class="sg-title">ゴミレスキュー<br>クエスト</div>
     <div class="sg-sub">音を鳴らして<br>物語をはじめよう</div>
     <button class="sg-btn" id="btn-start-sound">▶ はじめる</button>
+    <button class="sg-skip" id="btn-skip-gate">スキップする ▶</button>
   </div>
 
   <div class="top-row">
@@ -100,10 +105,25 @@ const progressBar = document.getElementById('progress-bar');
 const fadeOut = document.getElementById('fade-out');
 
 const NEXT_PAGE = 'gomi_rescue_start.html';
+const SEEN_KEY = 'grq_opening_seen';
+
+// 2回目以降の訪問は、オープニング動画を出さずにすぐスタート画面へ
+try{
+  if(localStorage.getItem(SEEN_KEY) === 'true'){
+    location.replace(NEXT_PAGE);
+  }
+}catch(e){ /* localStorageが使えない環境ではそのままオープニングを表示 */ }
+
+function markSeen(){
+  try{ localStorage.setItem(SEEN_KEY, 'true'); }catch(e){}
+}
 
 function goNext(){
+  markSeen();
   fadeOut.classList.add('active');
   setTimeout(()=>{ location.href = NEXT_PAGE; }, 550);
+  // 万が一フェード演出だけで遷移が起きなかった場合の保険
+  setTimeout(()=>{ location.href = NEXT_PAGE; }, 2000);
 }
 
 // try silent autoplay immediately so something is moving behind the gate
@@ -117,6 +137,7 @@ btnStart.addEventListener('click', ()=>{
 });
 
 btnSkip.addEventListener('click', goNext);
+document.getElementById('btn-skip-gate').addEventListener('click', goNext);
 
 video.addEventListener('timeupdate', ()=>{
   if(!video.duration) return;

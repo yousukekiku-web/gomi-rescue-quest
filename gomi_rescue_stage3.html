@@ -76,7 +76,7 @@ let round=[],pos=0,point=0,left=60,tick,locked=false;const $=x=>document.getElem
   soundBtn.onclick=()=>{setup();bgmOn=!bgmOn;soundBtn.textContent=bgmOn?'🔊':'🔇';soundBtn.classList.toggle('muted',!bgmOn);if(bgmOn)startBgm();else stopBgm()};
   document.getElementById('start').addEventListener('click',startBgm,true);
   document.getElementById('retry').addEventListener('click',startBgm,true);
-  document.addEventListener('click',e=>{const b=e.target.closest('.answer');if(!b)return;setTimeout(()=>{if(b.classList.contains('correct'))correct();else if(b.classList.contains('wrong'))wrong()},0)},true);
+  document.addEventListener('click',e=>{const b=e.target.closest('.answer');if(!b)return;if(b.classList.contains('correct'))correct();else if(b.classList.contains('wrong'))wrong()},true);
   new MutationObserver(()=>{if(!document.getElementById('end').classList.contains('hide'))stopBgm()}).observe(document.getElementById('end'),{attributes:true,attributeFilter:['class']});
 })();
 </script><style>#soundBtn{position:absolute;z-index:20;right:10px;top:10px;width:42px;height:42px;border:0;border-radius:50%;background:#fffffff0;box-shadow:0 3px 10px #45277735;font-size:19px;cursor:pointer}#soundBtn.muted{opacity:.6}</style></body></html>
