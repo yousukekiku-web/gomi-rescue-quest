@@ -545,7 +545,8 @@ function initBGM3(){
   try{
     bgm3Ctx = new (window.AudioContext || window.webkitAudioContext)();
     bgm3Gain = bgm3Ctx.createGain();
-    bgm3Gain.gain.value = bgm3Muted ? 0 : 0.18;
+    // 小さいiPhoneスピーカーでも聞き取りやすい音量にする。
+    bgm3Gain.gain.value = bgm3Muted ? 0 : 0.32;
     bgm3Gain.connect(bgm3Ctx.destination);
   }catch(e){ console.warn('BGM 3 is unavailable', e); }
 }
@@ -606,7 +607,7 @@ async function startBGM3(){
 }
 function toggleBGM3(){
   bgm3Muted = !bgm3Muted;
-  if(bgm3Gain) bgm3Gain.gain.setTargetAtTime(bgm3Muted ? 0 : 0.18, bgm3Ctx.currentTime, 0.05);
+  if(bgm3Gain) bgm3Gain.gain.setTargetAtTime(bgm3Muted ? 0 : 0.32, bgm3Ctx.currentTime, 0.05);
   const btn = document.getElementById('bgm-toggle');
   btn.textContent = bgm3Muted ? '🔇' : '🔊';
   btn.classList.toggle('muted', bgm3Muted);
@@ -618,8 +619,22 @@ document.getElementById('btn-start').addEventListener('pointerdown', ()=>void st
 document.getElementById('btn-retry').addEventListener('pointerdown', ()=>void startBGM3(), true);
 
 // ════════════════════════════════════════════════
-// SFX（ステージ1と同じ、Web Audio APIでその場合成。外部ファイル不要）
+// SFX（iPhone Safari向けにHTML Audioを優先）
 // ════════════════════════════════════════════════
+// Web Audioが端末設定で無音になる場合でも、ステージ1と同じMP3再生なら
+// 正解・不正解のフィードバックが必ず届く。
+const HTML_SFX = {
+  correct: 'gomi_rescue_assets_white/bin_fire.mp3',
+  wrong: 'gomi_rescue_assets_white/bin_wait.mp3'
+};
+function playHtmlSfx(kind){
+  try{
+    const audio = new Audio(HTML_SFX[kind]);
+    audio.preload = 'auto';
+    audio.volume = 0.9;
+    audio.play().catch(()=>{});
+  }catch(e){}
+}
 let sfxCtx = null;
 function getSfxCtx(){
   if(!sfxCtx) sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -637,17 +652,10 @@ function beep(freq,startTime,duration,type,gain){
   osc.start(startTime); osc.stop(startTime+duration+0.02);
 }
 function playCorrectChime(){
-  try{
-    const ctx=getSfxCtx(), now=ctx.currentTime;
-    beep(1318.5, now+0.00, 0.12, 'sine', 0.25);
-    beep(1046.5, now+0.13, 0.16, 'sine', 0.25);
-  }catch(e){}
+  playHtmlSfx('correct');
 }
 function playWrongBuzz(){
-  try{
-    const ctx=getSfxCtx(), now=ctx.currentTime;
-    beep(170, now+0.00, 0.18, 'square', 0.14);
-  }catch(e){}
+  playHtmlSfx('wrong');
 }
 </script>
 </body>

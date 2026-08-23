@@ -55,7 +55,8 @@ body{background:linear-gradient(160deg,#173a34,#0f8f83);display:flex;align-items
 /* ===== ranking list (大きめキャラクター表示) ===== */
 .board{padding:16px 16px 6px;display:flex;flex-direction:column;gap:12px;}
 .rank-card{background:#fff;border-radius:20px;padding:14px;box-shadow:0 4px 14px rgba(0,0,0,.1);
-  display:flex;flex-direction:column;gap:10px;border:2px solid transparent;}
+  display:flex;flex-direction:column;gap:10px;border:2px solid transparent;cursor:pointer;transition:transform .15s,box-shadow .15s;}
+.rank-card:active{transform:scale(.985);}
 .rank-card.top1{background:linear-gradient(160deg,#fff8e0,#ffe9b3);border-color:#ffcf4d;
   box-shadow:0 0 0 2px #fff,0 0 0 4px #ffcf4d,0 8px 22px rgba(200,140,0,.3);}
 .rank-card.top2{background:linear-gradient(160deg,#f5f8fc,#e3edf7);border-color:#b9cfe6;}
@@ -88,6 +89,30 @@ body{background:linear-gradient(160deg,#173a34,#0f8f83);display:flex;align-items
   text-decoration:none;display:block;text-align:center;}
 .btn-join:active{transform:translateY(3px);box-shadow:0 2px 0 #1f9c53;}
 .btn-home-text{display:block;text-align:center;font-size:11px;font-weight:700;color:#9aa7b0;text-decoration:underline;}
+
+/* ===== ranking detail ===== */
+.detail-modal{position:fixed;inset:0;z-index:2000;display:flex;align-items:flex-end;justify-content:center;
+  background:rgba(20,30,40,.58);padding:18px 12px max(18px,env(safe-area-inset-bottom));}
+.detail-modal[hidden]{display:none;}
+.detail-sheet{width:min(100%,430px);max-height:calc(100dvh - 36px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:linear-gradient(160deg,#fff,#f6f0ff);border-radius:26px;padding:20px 18px 22px;position:relative;
+  box-shadow:0 18px 45px rgba(0,0,0,.35);text-align:center;animation:sheetIn .2s ease-out;}
+@keyframes sheetIn{from{transform:translateY(18px);opacity:0}to{transform:translateY(0);opacity:1}}
+.detail-close{position:absolute;right:12px;top:12px;width:38px;height:38px;border:0;border-radius:50%;background:#eee6fa;
+  color:#7653c8;font-size:22px;font-weight:900;cursor:pointer;}
+.detail-badge{display:inline-block;background:linear-gradient(135deg,#7653c8,#4a287d);color:#fff;border-radius:18px;
+  padding:4px 13px;font-size:10px;font-weight:900;letter-spacing:.08em;}
+.detail-char{width:184px;height:230px;margin:12px auto 10px;border-radius:20px;overflow:hidden;background:#f6f0ff;
+  display:flex;align-items:center;justify-content:center;font-size:96px;box-shadow:0 10px 22px rgba(60,30,110,.25);}
+.detail-char img{width:100%;height:100%;object-fit:cover;display:block;}
+.detail-name{font-family:'Fredoka One',sans-serif;font-size:24px;color:#4a287d;line-height:1.35;padding:0 32px;}
+.detail-tier{font-size:12px;font-weight:900;color:#8a86a8;margin-top:4px;}
+.detail-score{display:inline-block;margin-top:9px;background:#e2f9ec;color:#1f9c53;border-radius:12px;padding:5px 12px;font-family:'Fredoka One',sans-serif;font-size:13px;}
+.detail-locs{margin-top:18px;text-align:left;display:flex;flex-direction:column;gap:8px;}
+.detail-locs h3{font-family:'Fredoka One',sans-serif;color:#0f8f83;text-align:center;font-size:16px;margin-bottom:2px;}
+.detail-loc{display:flex;gap:9px;align-items:flex-start;background:#eafcf0;border-radius:12px;padding:10px;font-size:12px;font-weight:700;color:#1f7a45;line-height:1.55;}
+.detail-loc .num{flex-shrink:0;background:#1f9c53;color:#fff;border-radius:8px;padding:2px 7px;font-family:'Fredoka One',sans-serif;font-size:10px;}
+.detail-empty{font-size:12px;font-weight:700;color:#8a86a8;text-align:center;padding:14px;background:#f5f2f9;border-radius:12px;}
 </style>
 </head>
 <body>
@@ -103,6 +128,13 @@ body{background:linear-gradient(160deg,#173a34,#0f8f83);display:flex;align-items
 
 <div class="board" id="board"><div class="rc-empty">読み込み中…</div></div>
 
+<div class="detail-modal" id="detail-modal" hidden aria-hidden="true">
+  <section class="detail-sheet" role="dialog" aria-modal="true" aria-labelledby="detail-name">
+    <button class="detail-close" id="detail-close" type="button" aria-label="閉じる">×</button>
+    <div id="detail-content"></div>
+  </section>
+</div>
+
 <div class="foot-row">
   <a href="gomi_rescue_ranking.html" class="btn-join">✏️ 自分の記録を登録する</a>
 </div>
@@ -111,6 +143,7 @@ body{background:linear-gradient(160deg,#173a34,#0f8f83);display:flex;align-items
 
 <script>
 const medals = ['🥇','🥈','🥉'];
+let displayedEntries = [];
 
 async function storageAvailable(){
   return typeof window.storage !== 'undefined' && window.storage;
@@ -138,6 +171,7 @@ async function renderBoard(){
   const list = await loadRanking();
   list.sort((a,b)=>b.totalScore-a.totalScore);
   const top = list.slice(0,20);
+  displayedEntries = top;
   const boardEl = document.getElementById('board');
 
   if(top.length===0){
@@ -151,7 +185,7 @@ async function renderBoard(){
     const meCls = (highlightTs && e.ts===highlightTs) ? ' me' : '';
     const charFallback = `<span>${escapeHtml(e.tierEmoji||'🧑')}</span>`;
     return `
-    <div class="rank-card${topCls}${meCls}">
+    <div class="rank-card${topCls}${meCls}" data-entry-index="${i}" role="button" tabindex="0" aria-label="${escapeHtml(e.name)}さんの詳細を見る">
       <div class="rc-top">
         <div class="rc-pos${i<3?' medal':''}">${i<3?medals[i]:(i+1)}</div>
         <div class="rc-char" data-imgkey="${escapeHtml(e.imgKey||e.code||'')}">${charFallback}</div>
@@ -178,6 +212,44 @@ async function renderBoard(){
   }
 }
 renderBoard();
+
+function showDetail(entry){
+  const locs = Array.isArray(entry.locations) ? entry.locations.slice(0,3) : [];
+  const char = escapeHtml(entry.tierEmoji || '🧑');
+  const key = escapeHtml(entry.imgKey || entry.code || '');
+  const locHtml = locs.length ? locs.map((l,i)=>`
+    <div class="detail-loc"><span class="num">🔋 ${i+1}</span><span>${escapeHtml([l.prefecture,l.city].filter(Boolean).join(''))}${l.place?'・'+escapeHtml(l.place):''}</span></div>`).join('')
+    : '<div class="detail-empty">回収スポットは登録されていません。</div>';
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-badge">RESCUE MEMBER</div>
+    <div class="detail-char" id="detail-char" data-imgkey="${key}">${char}</div>
+    <h2 class="detail-name" id="detail-name">${escapeHtml(entry.name)}</h2>
+    <div class="detail-tier">${escapeHtml(entry.tier || '')}</div>
+    <div class="detail-score">${Number(entry.totalScore || 0).toLocaleString()} SCORE</div>
+    <div class="detail-locs"><h3>🔍 調べたリサイクル回収スポット</h3>${locHtml}</div>`;
+  const charEl = document.getElementById('detail-char');
+  if(key){
+    const image = new Image();
+    image.onload = ()=>{ charEl.innerHTML = `<img src="chars/${key}.png" alt="">`; };
+    image.src = `chars/${key}.png`;
+  }
+  const modal = document.getElementById('detail-modal');
+  modal.hidden = false; modal.setAttribute('aria-hidden','false');
+}
+function closeDetail(){
+  const modal = document.getElementById('detail-modal');
+  modal.hidden = true; modal.setAttribute('aria-hidden','true');
+}
+document.getElementById('board').addEventListener('click', e=>{
+  const card = e.target.closest('.rank-card');
+  if(card) showDetail(displayedEntries[Number(card.dataset.entryIndex)]);
+});
+document.getElementById('board').addEventListener('keydown', e=>{
+  if((e.key==='Enter'||e.key===' ') && e.target.classList.contains('rank-card')){ e.preventDefault(); showDetail(displayedEntries[Number(e.target.dataset.entryIndex)]); }
+});
+document.getElementById('detail-close').addEventListener('click', closeDetail);
+document.getElementById('detail-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeDetail(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeDetail(); });
 
 document.getElementById('btn-refresh').addEventListener('click', (e)=>{
   e.currentTarget.classList.remove('spinning');

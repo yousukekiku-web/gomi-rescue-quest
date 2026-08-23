@@ -47,7 +47,8 @@ let round=[],pos=0,point=0,left=60,tick,locked=false;const $=x=>document.getElem
   const setup=()=>{
     if(ctx)return;
     ctx=new (window.AudioContext||window.webkitAudioContext)();
-    master=ctx.createGain(); master.gain.value=.16; master.connect(ctx.destination);
+    // Web Audio は端末によって小さく聞こえるため、BGMを聞き取れる音量にする。
+    master=ctx.createGain(); master.gain.value=.42; master.connect(ctx.destination);
   };
   const note=(hz,duration,when=0,type='triangle',volume=.2)=>{
     if(!ctx||!bgmOn)return;
@@ -75,8 +76,11 @@ let round=[],pos=0,point=0,left=60,tick,locked=false;const $=x=>document.getElem
     playStep();loopId=setInterval(playStep,210);
   };
   const stopBgm=()=>{if(loopId){clearInterval(loopId);loopId=null}};
-  const correct=()=>{setup();ctx.resume();note(1046,.12,0,'sine',.48);note(1318,.3,.12,'sine',.45)};
-  const wrong=()=>{setup();ctx.resume();note(145,.18,0,'sawtooth',.42);note(118,.28,.18,'sawtooth',.38)};
+  // iPhone SafariでWeb Audioが無音になる場合に備え、効果音はHTML Audioで再生する。
+  // ステージ1と同じMP3素材を使うため、iPhoneではこちらがより確実に鳴る。
+  const playHtmlSfx=kind=>{try{const a=new Audio(kind==='correct'?'gomi_rescue_assets_white/bin_fire.mp3':'gomi_rescue_assets_white/bin_wait.mp3');a.preload='auto';a.volume=.9;a.play().catch(()=>{})}catch(e){}};
+  const correct=()=>playHtmlSfx('correct');
+  const wrong=()=>playHtmlSfx('wrong');
   soundBtn.onpointerdown=()=>{setup();bgmOn=!bgmOn;soundBtn.textContent=bgmOn?'🔊':'🔇';soundBtn.classList.toggle('muted',!bgmOn);if(bgmOn)void startBgm();else stopBgm()};
   document.getElementById('start').addEventListener('pointerdown',()=>void startBgm(),true);
   document.getElementById('retry').addEventListener('pointerdown',()=>void startBgm(),true);
