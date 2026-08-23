@@ -528,7 +528,7 @@ function grqSaveStage(num, obj){
 // ════════════════════════════════════════════════
 // BGM 3（ステージ1とは別曲のWeb Audio APIループ）
 // ════════════════════════════════════════════════
-let bgm3Ctx = null, bgm3Gain = null, bgm3Playing = false, bgm3Muted = false;
+let bgm3Ctx = null, bgm3Gain = null, bgm3Playing = false, bgm3Muted = false, bgm3Audio = null;
 let bgm3Timer = null, bgm3NextTime = 0, bgm3Step = 0;
 // ステージ1とは異なる、明るく弾むサンバ風のポップ曲。
 const BGM3_BPM = 154;
@@ -590,24 +590,24 @@ function runBGM3(){
   }
 }
 async function startBGM3(){
-  initBGM3();
-  if(!bgm3Ctx) return;
-  // iPhone Safari はユーザー操作内で AudioContext を明示的に再開し、
-  // その完了後に音を予約しないと無音のままになることがある。
+  // iPhone Safariで確実に鳴るHTML AudioのループBGMを使う。
   try{
-    if(bgm3Ctx.state !== 'running') await bgm3Ctx.resume();
+    if(!bgm3Audio){
+      bgm3Audio = new Audio('gomi_rescue_assets_audio/bgm_loop.wav');
+      bgm3Audio.loop = true;
+      bgm3Audio.preload = 'auto';
+    }
+    bgm3Audio.volume = bgm3Muted ? 0 : 0.55;
+    await bgm3Audio.play();
   }catch(e){
     console.warn('BGM の再生を開始できませんでした', e);
     return;
   }
-  if(bgm3Ctx.state !== 'running') return;
-  if(bgm3Playing) return;
-  bgm3Playing = true; bgm3Step = 0; bgm3NextTime = bgm3Ctx.currentTime + 0.1;
-  bgm3Timer = setInterval(runBGM3, 25);
+  bgm3Playing = true;
 }
 function toggleBGM3(){
   bgm3Muted = !bgm3Muted;
-  if(bgm3Gain) bgm3Gain.gain.setTargetAtTime(bgm3Muted ? 0 : 0.32, bgm3Ctx.currentTime, 0.05);
+  if(bgm3Audio) bgm3Audio.volume = bgm3Muted ? 0 : 0.55;
   const btn = document.getElementById('bgm-toggle');
   btn.textContent = bgm3Muted ? '🔇' : '🔊';
   btn.classList.toggle('muted', bgm3Muted);
@@ -624,8 +624,8 @@ document.getElementById('btn-retry').addEventListener('pointerdown', ()=>void st
 // Web Audioが端末設定で無音になる場合でも、ステージ1と同じMP3再生なら
 // 正解・不正解のフィードバックが必ず届く。
 const HTML_SFX = {
-  correct: 'gomi_rescue_assets_white/bin_fire.mp3',
-  wrong: 'gomi_rescue_assets_white/bin_wait.mp3'
+  correct: 'gomi_rescue_assets_audio/sfx_correct.wav',
+  wrong: 'gomi_rescue_assets_audio/sfx_wrong.wav'
 };
 function playHtmlSfx(kind){
   try{

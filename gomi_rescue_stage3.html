@@ -40,7 +40,7 @@ let round=[],pos=0,point=0,left=60,tick,locked=false;const $=x=>document.getElem
 </style><script>
 /* 最終ステージ用サウンド：外部ファイルなしで動くWeb AudioのBGM／効果音 */
 (()=>{
-  let ctx, master, bgmOn=true, loopId=null, step=0;
+  let ctx, master, bgmOn=true, loopId=null, step=0, bgmAudio=null;
   const soundBtn=document.createElement('button');
   soundBtn.id='soundBtn'; soundBtn.type='button'; soundBtn.textContent='🔊'; soundBtn.setAttribute('aria-label','BGMのオン・オフ');
   document.getElementById('app').appendChild(soundBtn);
@@ -68,17 +68,16 @@ let round=[],pos=0,point=0,left=60,tick,locked=false;const $=x=>document.getElem
     step++;
   };
   const startBgm=async()=>{
-    setup();
-    // iPhone Safari では、操作イベント中に resume を呼び、完了後に
-    // オシレーターを開始する必要がある。
-    try{if(ctx.state!=="running")await ctx.resume()}catch(e){console.warn('BGM の再生を開始できませんでした',e);return}
-    if(ctx.state!=="running"||!bgmOn||loopId)return;
-    playStep();loopId=setInterval(playStep,210);
+    if(!bgmOn)return;
+    try{
+      if(!bgmAudio){bgmAudio=new Audio('gomi_rescue_assets_audio/bgm_loop.wav');bgmAudio.loop=true;bgmAudio.preload='auto'}
+      bgmAudio.volume=.55;
+      await bgmAudio.play();
+    }catch(e){console.warn('BGM の再生を開始できませんでした',e)}
   };
-  const stopBgm=()=>{if(loopId){clearInterval(loopId);loopId=null}};
-  // iPhone SafariでWeb Audioが無音になる場合に備え、効果音はHTML Audioで再生する。
-  // ステージ1と同じMP3素材を使うため、iPhoneではこちらがより確実に鳴る。
-  const playHtmlSfx=kind=>{try{const a=new Audio(kind==='correct'?'gomi_rescue_assets_white/bin_fire.mp3':'gomi_rescue_assets_white/bin_wait.mp3');a.preload='auto';a.volume=.9;a.play().catch(()=>{})}catch(e){}};
+  const stopBgm=()=>{if(loopId){clearInterval(loopId);loopId=null}if(bgmAudio){bgmAudio.pause();bgmAudio.currentTime=0}};
+  // Web AudioではなくHTML Audioで、ピンポン／ブッブーを確実に再生する。
+  const playHtmlSfx=kind=>{try{const a=new Audio(kind==='correct'?'gomi_rescue_assets_audio/sfx_correct.wav':'gomi_rescue_assets_audio/sfx_wrong.wav');a.preload='auto';a.volume=.9;a.play().catch(()=>{})}catch(e){}};
   const correct=()=>playHtmlSfx('correct');
   const wrong=()=>playHtmlSfx('wrong');
   soundBtn.onpointerdown=()=>{setup();bgmOn=!bgmOn;soundBtn.textContent=bgmOn?'🔊':'🔇';soundBtn.classList.toggle('muted',!bgmOn);if(bgmOn)void startBgm();else stopBgm()};
